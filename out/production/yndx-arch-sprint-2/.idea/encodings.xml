@@ -3,7 +3,7 @@
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/DBViewer/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/DBViewer/src/main/resources" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/MongoDBViewer/src/main/java" charset="UTF-8" />
-    <file url="file://$PROJECT_DIR$/MongoDBViewer/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/MongoDBViewerApp/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/MongoDBViewerApp/src/main/resources" charset="UTF-8" />
   </component>
 </project>
