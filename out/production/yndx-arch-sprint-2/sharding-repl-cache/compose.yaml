@@ -1,0 +1,165 @@
+name: mongo-sharding-repl-cache
+
+services:
+  # Mongo configuration server
+  configSrv:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: configSrv
+    ports:
+      - 27017:27017
+    networks:
+      - mngnetwork
+    command: --configsvr --replSet config_server --bind_ip_all --port 27017
+
+  # Mongo shard 11 - primary
+  shard11:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard11
+    ports:
+      - 27018:27018
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard1ReplicaSet --bind_ip_all --port 27018
+
+  # Mongo shard 12 - secondary
+  shard12:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard12
+    ports:
+      - 27021:27021
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard1ReplicaSet --bind_ip_all --port 27021
+
+  # Mongo shard 13 - secondary
+  shard13:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard13
+    ports:
+      - 27022:27022
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard1ReplicaSet --bind_ip_all --port 27022
+
+  # Mongo shard 21 - primary
+  shard21:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard21
+    ports:
+      - 27019:27019
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard2ReplicaSet --bind_ip_all --port 27019
+
+  # Mongo shard 22 - secondary
+  shard22:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard22
+    ports:
+      - 27023:27023
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard2ReplicaSet --bind_ip_all --port 27023
+
+  # Mongo shard 23 - secondary
+  shard23:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard23
+    ports:
+      - 27024:27024
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard2ReplicaSet --bind_ip_all --port 27024
+
+  # Mongo router server
+  mongos_router:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: mongos_router
+    ports:
+      - 27020:27020
+    networks:
+    - mngnetwork
+    volumes:
+    - mongodb1_data_container:/data/db
+    command: mongos --configdb config_server/configsrv:27017 --bind_ip_all --port 27020
+
+  #Redis master
+  redis-master:
+    image: redis:alpine
+    container_name: redis-master
+    ports:
+      - 6379:6379
+    networks:
+      - redisnetwork
+    volumes:
+      - redis-master-data:/data
+    command: redis-server --appendonly yes
+
+  #Redis slave 1
+  redis-slave1:
+    image: redis:alpine
+    container_name: redis-slave1
+    ports:
+      - 6380:6379
+    networks:
+      - redisnetwork
+    volumes:
+      - redis-slave1-data:/data
+    command: redis-server --slaveof redis-master 6379 --appendonly yes
+
+  #redis-slave 2
+  redis-slave2:
+    image: redis:alpine
+    container_name: redis-slave2
+    ports:
+      - "6381:6379"
+    networks:
+      - redisnetwork
+    volumes:
+      - redis-slave2-data:/data
+    command: redis-server --slaveof redis-master 6379 --appendonly yes
+
+  # Sentinel for Redis
+  sentinel:
+    image: redis:alpine
+    depends_on:
+      - redis-master
+    container_name: redis-sentinel
+    ports:
+      - 26379:26379
+    networks:
+      - redisnetwork
+    volumes:
+    - ./redis/sentinel.conf:/Users/DenisErmilov/IdeaProjects/redis/sentinel.conf
+    command: ["redis-server", "/Users/DenisErmilov/IdeaProjects/redis/sentinel.conf", "--sentinel"]
+
+  # Application
+  pymongo_api:
+    container_name: pymongo_api
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    depends_on:
+      - mongos_router
+      - redis-master
+    ports:
+      - 8080:8080
+    networks:
+      - mngnetwork
+      - redisnetwork
+    environment:
+      MONGODB_URL: "mongodb://mongos_router:27020"
+      MONGODB_DATABASE_NAME: "somedb"
+      REDIS_URL: "redis://redis-master:6379"
+
+networks:
+  mngnetwork:
+  redisnetwork:
+    driver: bridge
+
+volumes:
+  mongodb1_data_container:
+  redis-master-data:
+  redis-slave1-data:
+  redis-slave2-data:

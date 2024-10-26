@@ -1,0 +1,67 @@
+name: mongo-sharding
+
+services:
+  # Mongo configuration server
+  configSrv:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: configServer
+    ports:
+      - 27017:27017
+    networks:
+      - mngnetwork
+    command: --configsvr --replSet config_server --bind_ip_all --port 27017
+
+  # Mongo shard 1
+  shard1:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard1
+    ports:
+      - 27018:27018
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard1 --port 27018
+
+  # Mongo shard 2
+  shard2:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: shard2
+    ports:
+      - 27019:27019
+    networks:
+      - mngnetwork
+    command: --shardsvr --replSet shard2 --port 27019
+
+  # Mongo router server
+  mongos_router:
+    image: dh-mirror.gitverse.ru/mongo:latest
+    container_name: mongos_router
+    ports:
+      - 27020:27020
+    networks:
+      - mngnetwork
+    volumes:
+      - mongodb1_data_container:/data/db
+    command: mongos --configdb config_server/configsrv:27017 --bind_ip_all --port 27020
+
+  # Application
+  pymongo_api:
+    container_name: pymongo_api
+    build:
+      context: api_app
+      dockerfile: Dockerfile
+    image: kazhem/pymongo_api:1.0.0
+    depends_on:
+      - mongos_router
+    ports:
+      - 8080:8080
+    networks:
+      - mngnetwork
+    environment:
+      MONGODB_URL: "mongodb://mongos_router:27020"
+      MONGODB_DATABASE_NAME: "somedb"
+
+networks:
+  mngnetwork:
+
+volumes:
+  mongodb1_data_container:
